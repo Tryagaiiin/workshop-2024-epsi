@@ -1,9 +1,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
+
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent] });
+const badWords = require('./badWords.json');
+
 
 client.commands = new Collection();
 const foldersPath = path.join(__dirname, 'commands');
@@ -47,5 +50,23 @@ client.on(Events.InteractionCreate, async interaction => {
 		}
 	}
 });
+
+client.on('messageCreate', (message) => {
+	if (message.author.bot) return;
+
+	const content = message.content.toLowerCase();
+  
+	for (let word of badWords) {
+	  if (content.includes(word)) {
+		message.delete();
+		message.channel.send(`${message.author}, votre message a été supprimé pour contenu inapproprié.`);
+		// Enregistrer l'infraction dans la base de données ici
+		return;
+	  }
+	}
+  
+	// Autres traitements si nécessaires
+  });
+
 
 client.login(token);
