@@ -110,7 +110,9 @@ client.on('messageCreate', async (message) => {
 	});
   
     for (let word of badWords) {
-        if (content.includes(word)) {
+		let wordsInContent = content.split(/\b/);
+
+        if (wordsInContent.includes(word)) {
             try {
                 await message.delete();
                 console.log(`Message supprimé : ${message.content}`);
