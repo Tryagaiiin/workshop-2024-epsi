@@ -4,9 +4,17 @@ const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
 const badWords = require('./badWords.json');
 
+const sqlite3 = require('sqlite3').verbose();
+
+let db = new sqlite3.Database('./db/users.db', (err) => {
+    if (err) {
+      console.error(err.message);
+    }
+    console.log('Connected to the users database.');
+  });
 
 client.commands = new Collection();
 const foldersPath = path.join(__dirname, 'commands');
@@ -29,6 +37,34 @@ for (const folder of commandFolders) {
 client.once(Events.ClientReady, readyClient => {
 	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 });
+
+
+client.on(Events.ClientReady, async (client) => {
+    
+	const guild = client.guilds.cache.get("1295322247376146495");
+    console.log("fetching users");
+
+    let res = await guild.members.fetch();
+    res.forEach((member) => {		
+		// Vérifier l'existence de l'utilisateur dans la base de données
+		db.get('SELECT * FROM users WHERE id = ?', [`${member.user.id}`], (err, row) => {
+			if (err) {
+				// Création de l'utilisateur dans la base de données
+				console.log(`user ${member.user.id} not found in the database`);
+				db.run('INSERT INTO users(id, username, score) VALUES(?, ?, ?)', [`${member.user.id}`, `${member.user.username}`, 0], (err) => {
+					if(err) {
+						return console.log(err.message); 
+					}
+					console.log(`user created}`);
+				})
+			}
+			if (row) {
+				return console.log('User already exists in the database');
+			}
+		});
+    });
+})
+
 
 client.on(Events.InteractionCreate, async interaction => {
 	if (!interaction.isChatInputCommand()) return;
@@ -55,18 +91,47 @@ client.on('messageCreate', (message) => {
 	if (message.author.bot) return;
 
 	const content = message.content.toLowerCase();
+
+	// Vérifier l'existence de l'utilisateur dans la base de données
+	db.get('SELECT * FROM users WHERE id = ?', [`${message.author.id}`], (err, row) => {
+		if (err) {
+			// Création de l'utilisateur dans la base de données
+			console.log(`user ${member.user.id} not found in the database`);
+			db.run('INSERT INTO users(id, username, score) VALUES(?, ?, ?)', [`${member.user.id}`, `${member.user.username}`, 0], (err) => {
+				if(err) {
+					return console.log(err.message); 
+				}
+				console.log(`user created}`);
+			})
+		}
+		else {
+			// Ne rien faire si l'utilisateur existe déjà
+		}
+	});
   
 	for (let word of badWords) {
 	  if (content.includes(word)) {
 		message.delete();
 		message.channel.send(`${message.author}, votre message a été supprimé pour contenu inapproprié.`);
-		// Enregistrer l'infraction dans la base de données ici
+		// Incrémenter le score de l'utilisateur dans la base de données
+		db.get('SELECT * FROM users WHERE id = ?', [`${message.author.id}`], (err, row) => {
+			if (err) {
+				return console.log(err.message);
+			}
+			if (row) {
+				db.run('UPDATE users SET score = ? WHERE id = ?', [row.score + 1, `${message.author.id}`], (err) => {
+					if (err) {
+						return console.log(err.message);
+					}
+					console.log(`Score incremented for user ${message.author.id}`);
+				});
+			}
+		});
 		return;
 	  }
 	}
   
 	// Autres traitements si nécessaires
   });
-
 
 client.login(token);
