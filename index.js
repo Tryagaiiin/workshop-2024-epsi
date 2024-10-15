@@ -38,32 +38,32 @@ client.once(Events.ClientReady, readyClient => {
 	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 });
 
-
 client.on(Events.ClientReady, async (client) => {
-    
-	const guild = client.guilds.cache.get("1295322247376146495");
+    const guild = client.guilds.cache.get("1295322247376146495");
     console.log("fetching users");
 
     let res = await guild.members.fetch();
-    res.forEach((member) => {		
-		// Vérifier l'existence de l'utilisateur dans la base de données
-		db.get('SELECT * FROM users WHERE id = ?', [`${member.user.id}`], (err, row) => {
-			if (err) {
-				// Création de l'utilisateur dans la base de données
-				console.log(`user ${member.user.id} not found in the database`);
-				db.run('INSERT INTO users(id, username, score) VALUES(?, ?, ?)', [`${member.user.id}`, `${member.user.username}`, 0], (err) => {
-					if(err) {
-						return console.log(err.message); 
-					}
-					console.log(`user created}`);
-				})
-			}
-			if (row) {
-				return console.log('User already exists in the database');
-			}
-		});
+    res.forEach((member) => {
+        db.get('SELECT * FROM users WHERE id = ?', [member.user.id], (err, row) => {
+            if (err) {
+                console.error('Error fetching user:', err.message);
+                return;
+            }
+            if (!row) {
+                console.log(`User ${member.user.id} not found in the database, creating...`);
+                db.run('INSERT INTO users (id, username, score) VALUES (?, ?, ?)', [member.user.id, member.user.username, 0], (err) => {
+                    if (err) {
+                        console.error('Error adding user:', err.message);
+                        return;
+                    }
+                    console.log(`User ${member.user.username} created successfully.`);
+                });
+            } else {
+                console.log(`User ${member.user.username} already exists in the database.`);
+            }
+        });
     });
-})
+});
 
 
 client.on(Events.InteractionCreate, async interaction => {
