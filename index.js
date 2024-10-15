@@ -134,7 +134,4 @@ client.on('messageCreate', (message) => {
 	// Autres traitements si nécessaires
   });
 
-
-
-
 client.login(token);
