@@ -4,9 +4,17 @@ const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
 const badWords = require('./badWords.json');
 
+const sqlite3 = require('sqlite3').verbose();
+
+let db = new sqlite3.Database('./db/users.db', (err) => {
+    if (err) {
+      console.error(err.message);
+    }
+    console.log('Connected to the users database.');
+  });
 
 client.commands = new Collection();
 const foldersPath = path.join(__dirname, 'commands');
@@ -28,7 +36,28 @@ for (const folder of commandFolders) {
 
 client.once(Events.ClientReady, readyClient => {
 	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
+	client.user.setActivity('Je vous vois', { type: 'LISTENING' });
 });
+
+
+client.on(Events.ClientReady, async (client) => {
+    
+	const guild = client.guilds.cache.get("1295322247376146495");
+
+    console.log("fetching users");
+
+    let res = await guild.members.fetch();
+    res.forEach((member) => {
+        console.log(member.user.username, member.user.id);
+		db.run('INSERT INTO users(id, username, score) VALUES(?, ?, ?)', [`${member.user.id}`, `${member.user.username}`, 0], (err) => {
+			if(err) {
+				return console.log(err.message); 
+			}
+			console.log(`Row was added to the table: ${this.lastID}`);
+		})
+    });
+})
+
 
 client.on(Events.InteractionCreate, async interaction => {
 	if (!interaction.isChatInputCommand()) return;
@@ -67,6 +96,8 @@ client.on('messageCreate', (message) => {
   
 	// Autres traitements si nécessaires
   });
+
+
 
 
 client.login(token);
