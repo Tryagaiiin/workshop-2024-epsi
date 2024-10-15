@@ -1,0 +1,19 @@
+body {
+  font-family: Arial, sans-serif;
+}
+
+.navbar-brand {
+  font-weight: bold;
+}
+
+.table {
+  margin-top: 20px;
+}
+
+.badge {
+  font-size: 14px;
+}
+
+h1, h2, h3, h4 {
+  margin-top: 20px;
+}
