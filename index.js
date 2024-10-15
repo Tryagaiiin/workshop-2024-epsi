@@ -36,25 +36,32 @@ for (const folder of commandFolders) {
 
 client.once(Events.ClientReady, readyClient => {
 	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
-	client.user.setActivity('Je vous vois', { type: 'LISTENING' });
 });
 
 
 client.on(Events.ClientReady, async (client) => {
     
 	const guild = client.guilds.cache.get("1295322247376146495");
-
     console.log("fetching users");
 
     let res = await guild.members.fetch();
-    res.forEach((member) => {
-        console.log(member.user.username, member.user.id);
-		db.run('INSERT INTO users(id, username, score) VALUES(?, ?, ?)', [`${member.user.id}`, `${member.user.username}`, 0], (err) => {
-			if(err) {
-				return console.log(err.message); 
+    res.forEach((member) => {		
+		// Vérifier l'existence de l'utilisateur dans la base de données
+		db.get('SELECT * FROM users WHERE id = ?', [`${member.user.id}`], (err, row) => {
+			if (err) {
+				// Création de l'utilisateur dans la base de données
+				console.log(`user ${member.user.id} not found in the database`);
+				db.run('INSERT INTO users(id, username, score) VALUES(?, ?, ?)', [`${member.user.id}`, `${member.user.username}`, 0], (err) => {
+					if(err) {
+						return console.log(err.message); 
+					}
+					console.log(`user created}`);
+				})
 			}
-			console.log(`Row was added to the table: ${this.lastID}`);
-		})
+			if (row) {
+				return console.log('User already exists in the database');
+			}
+		});
     });
 })
 
@@ -84,12 +91,42 @@ client.on('messageCreate', (message) => {
 	if (message.author.bot) return;
 
 	const content = message.content.toLowerCase();
+
+	// Vérifier l'existence de l'utilisateur dans la base de données
+	db.get('SELECT * FROM users WHERE id = ?', [`${message.author.id}`], (err, row) => {
+		if (err) {
+			// Création de l'utilisateur dans la base de données
+			console.log(`user ${member.user.id} not found in the database`);
+			db.run('INSERT INTO users(id, username, score) VALUES(?, ?, ?)', [`${member.user.id}`, `${member.user.username}`, 0], (err) => {
+				if(err) {
+					return console.log(err.message); 
+				}
+				console.log(`user created}`);
+			})
+		}
+		else {
+			// Ne rien faire si l'utilisateur existe déjà
+		}
+	});
   
 	for (let word of badWords) {
 	  if (content.includes(word)) {
 		message.delete();
 		message.channel.send(`${message.author}, votre message a été supprimé pour contenu inapproprié.`);
-		// Enregistrer l'infraction dans la base de données ici
+		// Incrémenter le score de l'utilisateur dans la base de données
+		db.get('SELECT * FROM users WHERE id = ?', [`${message.author.id}`], (err, row) => {
+			if (err) {
+				return console.log(err.message);
+			}
+			if (row) {
+				db.run('UPDATE users SET score = ? WHERE id = ?', [row.score + 1, `${message.author.id}`], (err) => {
+					if (err) {
+						return console.log(err.message);
+					}
+					console.log(`Score incremented for user ${message.author.id}`);
+				});
+			}
+		});
 		return;
 	  }
 	}
