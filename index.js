@@ -38,7 +38,6 @@ client.once(Events.ClientReady, readyClient => {
 	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 });
 
-
 client.on(Events.ClientReady, async (client) => {
     const guild = client.guilds.cache.get("1295322247376146495");
     console.log("fetching users");
@@ -88,10 +87,10 @@ client.on(Events.InteractionCreate, async interaction => {
 	}
 });
 
-client.on('messageCreate', (message) => {
-	if (message.author.bot) return;
+client.on('messageCreate', async (message) => {
+    if (message.author.bot) return;
 
-	const content = message.content.toLowerCase();
+    const content = message.content.toLowerCase();
 
 	// Vérifier l'existence de l'utilisateur dans la base de données
 	db.get('SELECT * FROM users WHERE id = ?', [`${message.author.id}`], (err, row) => {
@@ -110,11 +109,13 @@ client.on('messageCreate', (message) => {
 		}
 	});
   
-	for (let word of badWords) {
-	  if (content.includes(word)) {
-		message.delete();
-		message.channel.send(`${message.author}, votre message a été supprimé pour contenu inapproprié.`);
-		// Incrémenter le score de l'utilisateur dans la base de données
+    for (let word of badWords) {
+        if (content.includes(word)) {
+            try {
+                await message.delete();
+                console.log(`Message supprimé : ${message.content}`);
+                await message.channel.send(`${message.author}, votre message a été supprimé pour contenu inapproprié.`);
+                // Incrémenter le score de l'utilisateur dans la base de données
 		db.get('SELECT * FROM users WHERE id = ?', [`${message.author.id}`], (err, row) => {
 			if (err) {
 				return console.log(err.message);
@@ -128,11 +129,18 @@ client.on('messageCreate', (message) => {
 				});
 			}
 		});
-		return;
-	  }
-	}
+            } catch (error) {
+                if (error.code === 10008) {
+                    console.log("Le message a déjà été supprimé.");
+                } else {
+                    console.error("Erreur inattendue lors de la suppression du message :", error);
+                }
+            }
+            return; // S'assurer de sortir de la boucle après le traitement d'un mot interdit
+        }
+    }
   
-	// Autres traitements si nécessaires
-  });
+    // Autres traitements si nécessaires
+});
 
 client.login(token);
