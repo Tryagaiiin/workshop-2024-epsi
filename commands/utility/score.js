@@ -11,7 +11,6 @@ module.exports = {
             if (err) {
                 console.error(err.message);
             }
-            console.log('Connected to the users database.');
         });
 
         db.get('SELECT score FROM users WHERE id = ?', [`${interaction.user.id}`], (err, row) => {
@@ -19,6 +18,7 @@ module.exports = {
                 return console.error(err.message);
             }
             if (row) {
+                console.log(`Score de toxicité de ${interaction.user.username}: ${row.score}`);
                 return interaction.reply(`Ton score de toxicité est de ${row.score}`);
             }
             return interaction.reply('Tu n\'as pas encore de score de toxicité.');

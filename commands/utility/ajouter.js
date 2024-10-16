@@ -28,6 +28,7 @@ module.exports = {
         if (!words.includes(word)) {
             words.push(word);
             fs.writeFileSync(filePath, JSON.stringify(words));
+            console.log(`interaction.user.username a ajouté le mot ${word}`);
             return interaction.reply(`Le mot ${word} a été ajouté à la liste des mots toxiques.`);
         }
         else {

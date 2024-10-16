@@ -12,7 +12,6 @@ module.exports = {
             if (err) {
                 console.error(err.message);
             }
-            console.log('Connected to the users database.');
         });
 
         db.all('SELECT * FROM users ORDER BY score DESC LIMIT 10', [], (err, rows) => {

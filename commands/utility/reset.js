@@ -16,6 +16,7 @@ module.exports = {
         // Vérifier si l'utilisateur a la permission d'administrateur
         const member = await interaction.guild.members.fetch(interaction.user.id);
         if (!member.roles.cache.has(resetRoleId)) {
+            console.log(`interaction.user.username : pas les droits pour reset`);
             return interaction.reply('Tu n\'as pas la permission d\'utiliser cette commande.');
         }
 
@@ -39,6 +40,8 @@ module.exports = {
 
             // Ajouter le rôle gentil à l'utilisateur
             member.roles.add(gentilRoleId);
+
+            console.log(`Roles updated ${user.id}`);
 
             return interaction.reply(`Le score de toxicité de <@${user.id}> a été réinitialisé.`);
         });

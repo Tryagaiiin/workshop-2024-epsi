@@ -124,7 +124,7 @@ client.on('messageCreate', async (message) => {
 				if(err) {
 					return console.log(err.message); 
 				}
-				console.log(`user created}`);
+				console.log(`user created`);
 			})
 		}
 		else {
@@ -138,7 +138,7 @@ client.on('messageCreate', async (message) => {
         if (wordsInContent.includes(word)) {
             try {
                 await message.delete();
-                console.log(`Message supprimé : ${message.content}`);
+                console.log(`Message de ${message.author.username} supprimé : ${message.content}`);
                 await message.channel.send(`${message.author}, votre message a été supprimé pour contenu inapproprié.`);
                 // Incrémenter le score de l'utilisateur dans la base de données
 		db.get('SELECT * FROM users WHERE id = ?', [`${message.author.id}`], (err, row) => {
