@@ -1,3 +1,4 @@
+// Dashboard.js
 import React, { useEffect, useState } from 'react';
 import api from './api';
 import StatsChart from './StatsChart';
@@ -22,11 +23,34 @@ function Dashboard() {
 
   if (loading) return <p>Chargement...</p>;
   if (error) return <p>{error}</p>;
-  
-  // Construire l'URL de l'avatar
+
   const avatarUrl = stats.avatar
-    ? `https://cdn.discordapp.com/avatars/${stats.userId}/${stats.avatar}.png`
+    ? `https://cdn.discordapp.com/avatars/${stats.userId}/${stats.avatar}.${stats.avatar.startsWith('a_') ? 'gif' : 'png'}`
     : 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+  const handleRedeemInfraction = () => {
+    api.post('/api/redeem/infraction')
+      .then(response => {
+        alert(response.data.message);
+        // Rafraîchir les stats
+        setStats(response.data.stats);
+      })
+      .catch(err => {
+        alert(err.response.data.message || 'Erreur lors de l\'échange de points.');
+      });
+  };
+
+  const handleRedeemKick = () => {
+    api.post('/api/redeem/kick')
+      .then(response => {
+        alert(response.data.message);
+        // Rafraîchir les stats
+        setStats(response.data.stats);
+      })
+      .catch(err => {
+        alert(err.response.data.message || 'Erreur lors de l\'échange de points.');
+      });
+  };
 
   return (
     <motion.div
@@ -35,41 +59,29 @@ function Dashboard() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-		<div className="text-center">
-			<img
-			  src={avatarUrl}
-			  alt="Avatar"
-			  width="128"
-			  height="128"
-			  className="rounded-circle"
-		/>
-		<h1>Bonjour, {stats.username}</h1>
-		</div>
-		<div className="row">
-			<div className="col-md-6">
-			<h3><i className="fas fa-user"></i> Informations personnelles</h3>
-			<p><strong>Points :</strong> {stats.points}</p>
-			<p><strong>Infractions :</strong> {stats.infractions}</p>
-			<h4>Rôles :</h4>
-        <div>
-            {stats.roles ? (
-              stats.roles.split(',').map((role, index) => (
-                <span key={index} className="badge badge-secondary mr-2">{role}</span>
-              ))
-            ) : (
-              <p>Aucun rôle assigné</p>
-            )}
-          </div>
-          <h4>Badges :</h4>
-          <div>
-            {stats.badges ? (
-              stats.badges.split(',').map((badge, index) => (
-                <span key={index} className="badge badge-info mr-2">{badge}</span>
-              ))
-            ) : (
-              <p>Aucun badge obtenu</p>
-            )}
-          </div>
+      <div className="text-center">
+        <img
+          src={avatarUrl}
+          alt="Avatar"
+          width="128"
+          height="128"
+          className="rounded-circle"
+        />
+        <h1>Bonjour, {stats.username}</h1>
+      </div>
+      <div className="row">
+        <div className="col-md-6">
+          <h3><i className="fas fa-user"></i> Informations personnelles</h3>
+          <p><strong>Points :</strong> {stats.points}</p>
+          <p><strong>Infractions :</strong> {stats.infractions}</p>
+          <p><strong>Kicks :</strong> {stats.kicks}</p>
+          <button className="btn btn-primary mr-2 mt-2" onClick={handleRedeemInfraction}>
+            Échanger 100 points contre 1 infraction
+          </button>
+          <button className="btn btn-danger mt-2" onClick={handleRedeemKick}>
+            Échanger 500 points contre 1 kick
+          </button>
+          {/* ... autres informations ... */}
         </div>
         <div className="col-md-6">
           <h3><i className="fas fa-chart-bar"></i> Vos statistiques</h3>

@@ -8,12 +8,15 @@ const cors = require('cors');
 const sequelize = require('./database');
 const UserStat = require('./models/UserStat');
 const secret = crypto.randomBytes(64).toString('hex');
+
 const app = express();
 
 app.use(cors({
   origin: 'http://localhost:3000',
   credentials: true,
 }));
+
+app.use(express.json()); // Pour parser les requêtes JSON
 
 app.use(session({
   secret: secret,
@@ -54,7 +57,7 @@ passport.use(new DiscordStrategy({
     }
     return done(null, profile);
   } catch (err) {
-    console.error(err);
+    console.error('Erreur lors de la vérification de l\'utilisateur :', err);
     return done(err, null);
   }
 }));
@@ -63,7 +66,6 @@ app.get('/auth/discord', passport.authenticate('discord'));
 
 app.get('/auth/discord/callback', passport.authenticate('discord', {
   failureRedirect: '/',
-  failureFlash: true,
 }), (req, res) => {
   res.redirect('http://localhost:3000/dashboard');
 });
@@ -86,11 +88,41 @@ app.get('/api/stats', async (req, res) => {
 });
 
 app.get('/api/leaderboard', async (req, res) => {
-  const leaderboard = await UserStat.findAll({
-    order: [['points', 'DESC']],
-    limit: 10,
-  });
+  const leaderboard = await UserStat.findAll();
   res.json(leaderboard);
+});
+
+// Routes pour échanger des points contre des infractions ou des kicks
+app.post('/api/redeem/infraction', async (req, res) => {
+  if (req.isAuthenticated()) {
+    let user = await UserStat.findByPk(req.user.id);
+    if (user.points >= 100 && user.infractions > 0) {
+      user.points -= 100;
+      user.infractions -= 1;
+      await user.save();
+      res.json({ message: 'Vous avez échangé 100 points pour supprimer 1 infraction.', stats: user });
+    } else {
+      res.status(400).json({ message: 'Vous n\'avez pas assez de points ou aucune infraction à supprimer.' });
+    }
+  } else {
+    res.status(401).send('Non autorisé');
+  }
+});
+
+app.post('/api/redeem/kick', async (req, res) => {
+  if (req.isAuthenticated()) {
+    let user = await UserStat.findByPk(req.user.id);
+    if (user.points >= 500 && user.kicks > 0) {
+      user.points -= 500;
+      user.kicks -= 1;
+      await user.save();
+      res.json({ message: 'Vous avez échangé 500 points pour supprimer 1 kick.', stats: user });
+    } else {
+      res.status(400).json({ message: 'Vous n\'avez pas assez de points ou aucun kick à supprimer.' });
+    }
+  } else {
+    res.status(401).send('Non autorisé');
+  }
 });
 
 // Synchroniser les modèles avec la base de données avant de démarrer le serveur

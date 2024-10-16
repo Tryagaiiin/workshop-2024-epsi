@@ -11,6 +11,19 @@ function Leaderboard() {
       .catch(() => setLeaderboard([]));
   }, []);
 
+  // Calculer le score ajusté
+  const adjustedLeaderboard = leaderboard.map(user => {
+    const penalty = user.infractions * 10 + user.kicks * 50; // Pénalités pour infractions et kicks
+    const adjustedPoints = user.points - penalty;
+    return {
+      ...user,
+      adjustedPoints,
+    };
+  });
+
+  // Trier le leaderboard en fonction des points ajustés
+  adjustedLeaderboard.sort((a, b) => b.adjustedPoints - a.adjustedPoints);
+
   return (
     <motion.div
       className="container mt-4"
@@ -24,12 +37,13 @@ function Leaderboard() {
           <tr>
             <th>Position</th>
             <th>Utilisateur</th>
-            <th>Points</th>
+            <th>Points Ajustés</th>
+            <th>Infractions</th>
+            <th>Kicks</th>
           </tr>
         </thead>
         <tbody>
-          {leaderboard.map((user, index) => {
-            // Construire l'URL de l'avatar
+          {adjustedLeaderboard.map((user, index) => {
             const avatarUrl = user.avatar
               ? `https://cdn.discordapp.com/avatars/${user.userId}/${user.avatar}.${user.avatar.startsWith('a_') ? 'gif' : 'png'}`
               : 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -47,7 +61,9 @@ function Leaderboard() {
                   />
                   {user.username}
                 </td>
-                <td>{user.points}</td>
+                <td>{user.adjustedPoints}</td>
+                <td>{user.infractions}</td>
+                <td>{user.kicks}</td>
               </tr>
             );
           })}
