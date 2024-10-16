@@ -13,6 +13,7 @@ module.exports = {
         // Check if the user has the required role to add a word
         const member = await interaction.guild.members.fetch(interaction.user.id);
         if (!member.roles.cache.has(ajoutRoleId)) {
+            console.log(`${interaction.user.username} : pas les droits pour ajouter`);
             return interaction.reply('Tu n\'as pas la permission d\'utiliser cette commande.');
         }
         
@@ -28,7 +29,7 @@ module.exports = {
         if (!words.includes(word)) {
             words.push(word);
             fs.writeFileSync(filePath, JSON.stringify(words));
-            console.log(`interaction.user.username a ajouté le mot ${word}`);
+            console.log(`${interaction.user.username} a ajouté le mot ${word}`);
             return interaction.reply(`Le mot ${word} a été ajouté à la liste des mots toxiques.`);
         }
         else {

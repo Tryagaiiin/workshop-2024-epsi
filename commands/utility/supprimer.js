@@ -13,7 +13,7 @@ module.exports = {
         // Check if the user has the required role to add a word
         const member = await interaction.guild.members.fetch(interaction.user.id);
         if (!member.roles.cache.has(suppressionRoleId)) {
-            console.log(`interaction.user.username : pas les droits pour supprimer`);
+            console.log(`${interaction.user.username} : pas les droits pour supprimer`);
             return interaction.reply('Tu n\'as pas la permission d\'utiliser cette commande.');
         }
 
@@ -30,11 +30,11 @@ module.exports = {
         if (words.includes(word)) {
             words.splice(words.indexOf(word), 1);
             fs.writeFileSync(filePath, JSON.stringify(words));
-            console.log(`interaction.user.username a supprimé le mot ${word}`);
+            console.log(`${interaction.user.username} a supprimé le mot ${word}`);
             return interaction.reply(`Le mot ${word} a été supprimé de la liste des mots toxiques.`);
         }
         else {
-            console.log(`interaction.user.username a essayé de supprimer un mot qui n'existe pas`);
+            console.log(`${interaction.user.username} a essayé de supprimer un mot qui n'existe pas`);
             return interaction.reply(`Le mot ${word} n'est pas dans la liste des mots toxiques.`);
         }
     }
