@@ -1,11 +1,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
+const { Client, Collection, Events, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
 const { token } = require('./config.json');
 const { guildId } = require('./config.json');
 const { puniRoleId } = require('./config.json');
 const { gentilRoleId } = require('./config.json');
+const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
 
@@ -38,7 +39,141 @@ for (const folder of commandFolders) {
 
 client.once(Events.ClientReady, readyClient => {
 	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
-});
+
+	    // Connexion à la base de données SQLite3
+		const db = new sqlite3.Database('./db/users.db', sqlite3.OPEN_READONLY, (err) => {
+			if (err) {
+				console.error('Erreur lors de la connexion à la base de données', err);
+				return;
+			}
+			console.log('Connecté à la base de données SQLite3');
+		});
+	
+		// Fonction pour générer et envoyer le graphique
+		const sendGraph = async () => {
+			// Récupération du canal
+			const channel = client.channels.cache.find(channel => channel.name === 'classement');
+			if (!channel) {
+				console.error('Le canal "classement" est introuvable');
+				return;
+			}
+	
+			// Suppression de tous les messages du canal
+			const messages = await channel.messages.fetch({ limit: 100 }); // Récupérer les 100 derniers messages
+			await channel.bulkDelete(messages)
+				.catch(err => console.error('Erreur lors de la suppression des messages:', err));
+	
+			// Requête pour récupérer les données
+			db.all(`SELECT username, score FROM users WHERE score > 0 ORDER BY score DESC LIMIT 5;'`, async (err, rows) => {
+				if (err) {
+					console.error('Erreur lors de la récupération des données:', err);
+					return;
+				}
+	
+				console.log('Données récupérées pour le graphique:', rows);
+	
+				// Création du graphique
+				const width = 800; // Largeur du graphique
+				const height = 600; // Hauteur du graphique
+				const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height });
+	
+				const users = rows.map(row => row.username);
+				const scores = rows.map(row => row.score);
+	
+				// Trouver l'utilisateur avec le compteur le plus élevé
+				const maxCompteurIndex = scores.indexOf(Math.max(...scores));
+				const userMax = users[maxCompteurIndex];
+	
+				const configuration = {
+					type: 'bar',
+					data: {
+						labels: users,
+						datasets: [{
+							label: 'Compteurs des utilisateurs',
+							data: scores,
+							backgroundColor: '#7289DA', // Couleur similaire au logo Discord
+							borderColor: '#4B5563',
+							borderWidth: 1
+						}]
+					},
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						plugins: {
+							legend: {
+								display: false // Légende masquée
+							},
+							tooltip: {
+								backgroundColor: 'rgba(255, 255, 255, 0.9)', // Arrière-plan des info-bulles
+								titleColor: 'black', // Couleur du titre dans l'info-bulle
+								bodyColor: 'black', // Couleur du texte du corps de l'info-bulle
+								borderColor: 'black', // Bordure de l'info-bulle
+								borderWidth: 1
+							}
+						},
+						scales: {
+							x: {
+								grid: {
+									display: false // Pas de quadrillage sur l'axe X
+								},
+								ticks: {
+									color: 'white', // Couleur des étiquettes de l'axe X
+									font: {
+										size: 32 // Taille de la police de l'axe X augmentée
+									}
+								}
+							},
+							y: {
+								beginAtZero: true,
+								grid: {
+									color: 'rgba(255, 255, 255, 0.2)', // Couleur des traits horizontaux
+									drawBorder: false // Pas de bordure pour l'axe Y
+								},
+								ticks: {
+									color: 'white', // Couleur des étiquettes de l'axe Y
+									font: {
+										size: 32 // Taille de la police de l'axe Y augmentée
+									}
+								}
+							}
+						},
+						layout: {
+							padding: {
+								left: 10,
+								right: 10,
+								top: 10,
+								bottom: 10
+							}
+						}
+					}
+				};
+	
+				const imageBuffer = await chartJSNodeCanvas.renderToBuffer(configuration, 'image/png', { backgroundColor: 'rgba(0, 0, 0, 1)' }); // Arrière-plan noir opaque
+	
+				// Envoi du message de titre dans le canal Discord
+				await channel.send('# 📊 Classement des utilisateurs les plus toxiques');
+	
+				// Envoi du graphique
+				const attachment = new AttachmentBuilder(imageBuffer, { name: 'classement.png' });
+				await channel.send({ files: [attachment] });
+				console.log('Graphique envoyé avec succès.');
+	
+				// Tagger l'utilisateur le plus toxique
+				const guild = channel.guild;
+				await guild.members.fetch(); // Récupérer tous les membres du serveur
+				const utilisateurLePlusToxique = guild.members.cache.find(member => member.user.username === userMax);
+				if (utilisateurLePlusToxique) {
+					await channel.send(`# 🦠 L'utilisateur le plus toxique est : <@${utilisateurLePlusToxique.id}>`);
+				} else {
+					await channel.send(`# 🦠 L'utilisateur le plus toxique est : ${userMax} (utilisateur introuvable)`);
+				}
+			});
+		};
+	
+		// Envoi du graphique toutes les 5 secondes pour le test
+		setInterval(sendGraph, 60000);
+	});
+
 
 client.on(Events.ClientReady, async (client) => {
     const guild = client.guilds.cache.get(guildId);
