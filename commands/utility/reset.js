@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const sqlite3 = require('sqlite3').verbose();
+const { resetRoleId } = require('../../config.json');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -11,7 +12,8 @@ module.exports = {
                 .setRequired(true)),
 	async execute(interaction) {
         // Vérifier si l'utilisateur a la permission d'administrateur
-        if (!interaction.member.permissions.has('ADMINISTRATOR')) {
+        const member = await interaction.guild.members.fetch(interaction.user.id);
+        if (!member.roles.cache.has(resetRoleId)) {
             return interaction.reply('Tu n\'as pas la permission d\'utiliser cette commande.');
         }
 
