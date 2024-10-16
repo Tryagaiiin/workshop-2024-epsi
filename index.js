@@ -150,7 +150,7 @@ client.on('messageCreate', async (message) => {
 					if (err) {
 						return console.log(err.message);
 					}
-					console.log(`Score incremented for user ${message.author.id}`);
+					console.log(`Score incremented for user ${message.author.username}`);
 					// Ajouter le rôle puni à l'utilisateur si son score est supérieur à 9
 					if (row.score >= 10) {
 						const member = message.guild.members.cache.get(message.author.id);
