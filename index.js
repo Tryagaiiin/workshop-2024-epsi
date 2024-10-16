@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
+const { guildId } = require('./config.json');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
 const badWords = require('./badWords.json');
@@ -39,7 +40,7 @@ client.once(Events.ClientReady, readyClient => {
 });
 
 client.on(Events.ClientReady, async (client) => {
-    const guild = client.guilds.cache.get("1295322247376146495");
+    const guild = client.guilds.cache.get(guildId);
     console.log("fetching users");
 
     let res = await guild.members.fetch();
