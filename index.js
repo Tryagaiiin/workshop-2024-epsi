@@ -8,7 +8,6 @@ const { puniRoleId } = require('./config.json');
 const { gentilRoleId } = require('./config.json');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
-const badWords = require('./badWords.json');
 
 const sqlite3 = require('sqlite3').verbose();
 
@@ -104,6 +103,18 @@ client.on('messageCreate', async (message) => {
 
     const content = message.content.toLowerCase();
 
+    const filePath = path.join(__dirname, 'badWords.json');
+
+    // Lire le fichier JSON à chaque fois
+    let badWords;
+    try {
+        const data = fs.readFileSync(filePath); // Lire le fichier avec le bon encodage
+        badWords = JSON.parse(data); // Parser le JSON
+    } catch (err) {
+        console.error('Erreur lors de la lecture de badWords.json:', err);
+        return; // Quitter si erreur
+    }
+
 	// Vérifier l'existence de l'utilisateur dans la base de données
 	db.get('SELECT * FROM users WHERE id = ?', [`${message.author.id}`], (err, row) => {
 		if (err) {
@@ -141,7 +152,7 @@ client.on('messageCreate', async (message) => {
 					}
 					console.log(`Score incremented for user ${message.author.id}`);
 					// Ajouter le rôle puni à l'utilisateur si son score est supérieur à 9
-					if (row.score > 9) {
+					if (row.score >= 10) {
 						const member = message.guild.members.cache.get(message.author.id);
 						member.roles.add(puniRoleId);
 						// Retirer le rôle gentil à l'utilisateur
