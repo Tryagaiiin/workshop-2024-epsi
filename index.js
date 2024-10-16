@@ -4,6 +4,8 @@ const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
 const { guildId } = require('./config.json');
+const { puniRoleId } = require('./config.json');
+const { gentilRoleId } = require('./config.json');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
 const badWords = require('./badWords.json');
@@ -58,10 +60,19 @@ client.on(Events.ClientReady, async (client) => {
                         return;
                     }
                     console.log(`User ${member.user.username} created successfully.`);
+					member.roles.add(gentilRoleId);
                 });
             } else {
                 console.log(`User ${member.user.username} already exists in the database.`);
-            }
+				// Ajouter le role gentil si le score est inférieur à 10
+				if (row.score < 10) {
+					member.roles.add(gentilRoleId);
+				}
+				// Ajouter le role puni si le score est supérieur à 10
+				if (row.score > 9) {
+					member.roles.add(puniRoleId);
+				}
+			}
         });
     });
 });
@@ -129,11 +140,19 @@ client.on('messageCreate', async (message) => {
 						return console.log(err.message);
 					}
 					console.log(`Score incremented for user ${message.author.id}`);
+					// Ajouter le rôle puni à l'utilisateur si son score est supérieur à 9
+					if (row.score > 9) {
+						const member = message.guild.members.cache.get(message.author.id);
+						member.roles.add(puniRoleId);
+						// Retirer le rôle gentil à l'utilisateur
+						member.roles.remove(gentilRoleId);
+						console.log(`Roles updated ${message.author.id}`);
+					}
 				});
 			}
 		});
             } catch (error) {
-                if (error.code === 10008) {
+                if (error.code === 10008 || error.code === 10007) {
                     console.log("Le message a déjà été supprimé.");
                 } else {
                     console.error("Erreur inattendue lors de la suppression du message :", error);

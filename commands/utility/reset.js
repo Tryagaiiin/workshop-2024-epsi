@@ -1,6 +1,8 @@
 const { SlashCommandBuilder } = require('discord.js');
 const sqlite3 = require('sqlite3').verbose();
 const { resetRoleId } = require('../../config.json');
+const { puniRoleId } = require('../../config.json');
+const { gentilRoleId } = require('../../config.json');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -31,6 +33,13 @@ module.exports = {
             if (err) {
                 return console.error(err.message);
             }
+            // Supprimer le rôle puni de l'utilisateur
+            const member = interaction.guild.members.cache.get(user.id);
+            member.roles.remove(puniRoleId);
+
+            // Ajouter le rôle gentil à l'utilisateur
+            member.roles.add(gentilRoleId);
+
             return interaction.reply(`Le score de toxicité de <@${user.id}> a été réinitialisé.`);
         });
     }
