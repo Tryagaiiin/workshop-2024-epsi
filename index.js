@@ -16,7 +16,6 @@ let db = new sqlite3.Database('./db/users.db', (err) => {
     if (err) {
       console.error(err.message);
     }
-    console.log('Connected to the users database.');
   });
 
 client.commands = new Collection();
@@ -46,7 +45,6 @@ client.once(Events.ClientReady, readyClient => {
 				console.error('Erreur lors de la connexion à la base de données', err);
 				return;
 			}
-			console.log('Connecté à la base de données SQLite3');
 		});
 	
 		// Fonction pour générer et envoyer le graphique
@@ -68,10 +66,7 @@ client.once(Events.ClientReady, readyClient => {
 				if (err) {
 					console.error('Erreur lors de la récupération des données:', err);
 					return;
-				}
-	
-				console.log('Données récupérées pour le graphique:', rows);
-	
+				}	
 				// Création du graphique
 				const width = 800; // Largeur du graphique
 				const height = 600; // Hauteur du graphique
@@ -260,6 +255,8 @@ client.on('messageCreate', async (message) => {
 					return console.log(err.message); 
 				}
 				console.log(`user created`);
+				// Ajouter le rôle gentil à l'utilisateur
+				member.roles.add(gentilRoleId);
 			})
 		}
 		else {
