@@ -151,7 +151,7 @@ client.once(Events.ClientReady, readyClient => {
 				// Envoi du graphique
 				const attachment = new AttachmentBuilder(imageBuffer, { name: 'classement.png' });
 				await channel.send({ files: [attachment] });
-				console.log('Graphique envoyé avec succès.');
+				// console.log('Graphique envoyé avec succès.');
 	
 				// Tagger l'utilisateur le plus toxique
 				const guild = channel.guild;
@@ -232,7 +232,6 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
     const content = message.content.toLowerCase();
-
     const filePath = path.join(__dirname, 'badWords.json');
 
     // Lire le fichier JSON à chaque fois
@@ -245,67 +244,82 @@ client.on('messageCreate', async (message) => {
         return; // Quitter si erreur
     }
 
-	// Vérifier l'existence de l'utilisateur dans la base de données
-	db.get('SELECT * FROM users WHERE id = ?', [`${message.author.id}`], (err, row) => {
-		if (err) {
-			// Création de l'utilisateur dans la base de données
-			console.log(`user ${member.user.id} not found in the database`);
-			db.run('INSERT INTO users(id, username, score) VALUES(?, ?, ?)', [`${member.user.id}`, `${member.user.username}`, 0], (err) => {
-				if(err) {
-					return console.log(err.message); 
-				}
-				console.log(`user created`);
-				// Ajouter le rôle gentil à l'utilisateur
-				member.roles.add(gentilRoleId);
-			})
-		}
-		else {
-			// Ne rien faire si l'utilisateur existe déjà
-		}
-	});
-  
-    for (let word of badWords) {
-		let wordsInContent = content.split(/\b/);
-
-        if (wordsInContent.includes(word)) {
-            try {
-                await message.delete();
-                console.log(`Message de ${message.author.username} supprimé : ${message.content}`);
-                await message.channel.send(`${message.author}, votre message a été supprimé pour contenu inapproprié.`);
-                // Incrémenter le score de l'utilisateur dans la base de données
-		db.get('SELECT * FROM users WHERE id = ?', [`${message.author.id}`], (err, row) => {
-			if (err) {
-				return console.log(err.message);
-			}
-			if (row) {
-				db.run('UPDATE users SET score = ? WHERE id = ?', [row.score + 1, `${message.author.id}`], (err) => {
-					if (err) {
-						return console.log(err.message);
-					}
-					console.log(`Score incremented for user ${message.author.username}`);
-					// Ajouter le rôle puni à l'utilisateur si son score est supérieur à 9
-					if (row.score >= 10) {
-						const member = message.guild.members.cache.get(message.author.id);
-						member.roles.add(puniRoleId);
-						// Retirer le rôle gentil à l'utilisateur
-						member.roles.remove(gentilRoleId);
-						console.log(`Roles updated ${message.author.id}`);
-					}
-				});
-			}
-		});
-            } catch (error) {
-                if (error.code === 10008 || error.code === 10007) {
-                    console.log("Le message a déjà été supprimé.");
-                } else {
-                    console.error("Erreur inattendue lors de la suppression du message :", error);
+    // Fonction pour vérifier et créer l'utilisateur si nécessaire
+    const checkAndCreateUser = async (userId, username) => {
+        return new Promise((resolve, reject) => {
+            db.get('SELECT * FROM users WHERE id = ?', [userId], (err, row) => {
+                if (err) {
+                    return reject('Erreur lors de la recherche de l\'utilisateur dans la base de données : ' + err);
                 }
+
+                if (!row) {
+                    // L'utilisateur n'existe pas, on le crée
+                    db.run('INSERT INTO users(id, username, score) VALUES(?, ?, ?)', [userId, username, 0], (err) => {
+                        if (err) {
+                            return reject('Erreur lors de la création de l\'utilisateur : ' + err.message);
+                        }
+                        console.log(`Utilisateur ${username} créé dans la base de données.`);
+                        resolve({ id: userId, username: username, score: 0 }); // Retourner l'utilisateur créé
+                    });
+                } else {
+                    resolve(row); // L'utilisateur existe déjà, renvoyer ses infos
+                }
+            });
+        });
+    };
+
+    try {
+        // Vérifier et créer l'utilisateur si nécessaire
+        const user = await checkAndCreateUser(message.author.id, message.author.username);
+
+        // Vérification des mots interdits dans le message
+        const containsBadWord = badWords.some(word => content.includes(word));
+
+        if (containsBadWord) {
+            // Si un mot interdit est trouvé, supprimer le message
+            await message.delete();
+            console.log(`Message de ${message.author.username} supprimé : ${message.content}`);
+            await message.channel.send(`${message.author}, votre message a été supprimé pour contenu inapproprié.`);
+
+            // Incrémenter le score de l'utilisateur
+            const newScore = user.score + 1;
+            db.run('UPDATE users SET score = ? WHERE id = ?', [newScore, `${message.author.id}`], (err) => {
+                if (err) {
+                    console.error('Erreur lors de la mise à jour du score :', err.message);
+                    return;
+                }
+
+                console.log(`Score incrémenté pour l'utilisateur ${message.author.username} : nouveau score = ${newScore}`);
+
+                // Vérification du score pour gestion des rôles
+                const member = message.guild.members.cache.get(message.author.id);
+
+                if (newScore >= 10) {
+                    // Ajouter le rôle puni et retirer le rôle gentil
+                    member.roles.add(puniRoleId).catch(console.error);
+                    member.roles.remove(gentilRoleId).catch(console.error);
+                    console.log(`Rôles mis à jour pour l'utilisateur ${message.author.username} : puni ajouté.`);
+                } else {
+                    // Si le score est toujours inférieur à 10, s'assurer que le rôle gentil est attribué
+                    if (!member.roles.cache.has(gentilRoleId)) {
+                        member.roles.add(gentilRoleId).catch(console.error);
+                        console.log(`Rôle gentil attribué à l'utilisateur ${message.author.username}`);
+                    }
+                }
+            });
+        } else {
+            // Si aucun mot interdit n'est trouvé, s'assurer que l'utilisateur a le rôle gentil
+            const member = message.guild.members.cache.get(message.author.id);
+
+            if (!member.roles.cache.has(gentilRoleId)) {
+                member.roles.add(gentilRoleId).catch(console.error);
+                console.log(`Rôle gentil attribué à l'utilisateur ${message.author.username}`);
             }
-            return; // S'assurer de sortir de la boucle après le traitement d'un mot interdit
         }
+
+    } catch (error) {
+        console.error(error);
     }
-  
-    // Autres traitements si nécessaires
 });
 
 client.login(token);
